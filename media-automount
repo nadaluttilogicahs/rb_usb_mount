@@ -31,7 +31,7 @@ dev=/dev/${1##*/}
 fi
 
 mkdir -p "$lockdir"
-lockfile="$lockdir/${1##*/}.lock"
+lockfile="$lockdir/automount.lock"
 
 # Acquire exclusive lock for this device; re-exec under flock if not already locked
 if [ "$FLOCKED" != "1" ]
