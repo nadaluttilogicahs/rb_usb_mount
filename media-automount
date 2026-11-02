@@ -75,9 +75,10 @@ debuglog "$dev has no known filesystem type, ignoring mount request"
 exit 0
 fi
 
-[ "$UUID" ] && fstab=$(grep /etc/fstab -e "^[^#]*${UUID}") || \
-[ "$LABEL" ] && fstab=$(grep /etc/fstab -e "^[^#]*${LABEL}") || \
-fstab=$(grep /etc/fstab -e "^[ \t]*$dev[ \t]")
+fstab=
+[ -n "$UUID" ] && fstab=$(grep -e "^[^#]*UUID=$UUID" /etc/fstab)
+[ -z "$fstab" ] && [ -n "$LABEL" ] && fstab=$(grep -e "^[^#]*LABEL=$LABEL" /etc/fstab)
+[ -z "$fstab" ] && fstab=$(grep -e "^[[:space:]]*$dev[[:space:]]" /etc/fstab)
 
 if [ "$fstab" ]
 then
@@ -89,8 +90,8 @@ AUTOMOUNT_DIR="${mediadir}/${LABEL:-${dev##*/}}.$TYPE"
 
 if [ -e "$AUTOMOUNT_DIR" ] && mountpoint -q "$AUTOMOUNT_DIR"
 then
-dups=$(find "${AUTOMOUNT_DIR}*" -maxdepth 0 -printf '.' | wc -c)
-AUTOMOUNT_DIR="${AUTOMOUNT_DIR}_$((dups+1))"
+base=$AUTOMOUNT_DIR; n=1
+while mountpoint -q "$AUTOMOUNT_DIR"; do AUTOMOUNT_DIR="${base}_$n"; n=$((n+1)); done
 fi
 
 if [ -e "$confdir/$TYPE" ]
@@ -107,7 +108,7 @@ mkdir -p "$AUTOMOUNT_DIR" || { errorlog "mkdir failed for $AUTOMOUNT_DIR"; exit 
 if mount -t "$AUTOMOUNT_TYPE" -o "$AUTOMOUNT_OPTS" "$dev" "$AUTOMOUNT_DIR"
 then
 username="$(ps au | awk '$11 ~ /^xinit/ { print $1; exit }')"
-    [ "$username" ] && DISPLAY=:0 runuser -u "$username" xdg-open "$AUTOMOUNT_DIR"
+    [ "$username" ] && DISPLAY=:0 runuser -u "$username" xdg-open "$AUTOMOUNT_DIR"&
 log "Device successfully mounted: $AUTOMOUNT_DIR"
 exit 0
 else
